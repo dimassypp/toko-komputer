@@ -15,6 +15,11 @@ const fs = require("fs")
 const models = require("../models/index")
 const customer = models.customer 
 
+//import auth
+const auth = require("../auth")
+const jwt = require("jsonwebtoken")
+const SECRET_KEY = "iLoveGondanglegi"
+
 //config storage image
 const storage = multer.diskStorage({
     destination:(req,file,cb) => {
@@ -27,7 +32,7 @@ const storage = multer.diskStorage({
 let upload = multer({storage: storage})
 
 // GET ALL CUSTOMER, METHOD: get, FUNCTION: findAll
-app.get("/", (req, res) =>{
+app.get("/",auth, (req, res) =>{
     customer.findAll()
         .then(result => {
             res.json({
@@ -42,7 +47,7 @@ app.get("/", (req, res) =>{
 })
 
 // GET CUSTOMER BY ID, METHOD: get, FUNCTION: findOne
-app.get("/:customer_id", (req, res) =>{
+app.get("/:customer_id",auth, (req, res) =>{
     customer.findOne({ where: {customer_id: req.params.customer_id}})
     .then(result => {
         res.json({
@@ -86,7 +91,7 @@ app.post("/", upload.single("image"), (req, res) =>{
 })
 
 // Update data CUSTOMER, method PUT
-app.put("/:id", upload.single("image"), (req, res) =>{
+app.put("/:id",auth, upload.single("image"), (req, res) =>{
     let param = { customer_id: req.params.id}
     let data = {
         name: req.body.name,
@@ -130,7 +135,7 @@ app.put("/:id", upload.single("image"), (req, res) =>{
 })
 
 // Hapus data CUSTOMER, method DELETE
-app.delete("/:id", async (req, res) =>{
+app.delete("/:id",auth, async (req, res) =>{
     try {
         let param = { customer_id: req.params.id}
         let result = await customer.findOne({where: param})
@@ -161,6 +166,30 @@ app.delete("/:id", async (req, res) =>{
     }
 })
 
+// Endpoint login
+app.post("/auth", async (req,res) => {
+    let data= {
+        username: req.body.username,
+        password: md5(req.body.password)
+    }
+ 
+    let result = await customer.findOne({where: data})
+    if(result){
+        let payload = JSON.stringify(result)
+        // generate token
+        let token = jwt.sign(payload, SECRET_KEY)
+        res.json({
+            logged: true,
+            data: result,
+            token: token
+        })
+    }else{
+        res.json({
+            logged: false,
+            message: "Invalid username or password"
+        })
+    }
+})
 
 module.exports = app
 
